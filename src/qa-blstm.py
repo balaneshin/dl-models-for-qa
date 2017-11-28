@@ -15,7 +15,7 @@ from sklearn.cross_validation import train_test_split
 
 
 DATA_DIR = "../data/comp_data"
-MODEL_DIR = "../data/models"
+MODEL_DIR = "./checkpoints"
 WORD2VEC_BIN = "../data/GoogleNews-vectors-negative300.bin.gz"
 WORD2VEC_EMBED_SIZE = 300
 
