@@ -159,7 +159,7 @@ Data is not included in this project. However, most of the data is available on 
        |       +---- models
 
 
-The dataset is available from (here)[https://www.kaggle.com/allenai/ai2-science-questions].
+The dataset is available from [here](https://www.kaggle.com/allenai/ai2-science-questions).
 
 The data directory should also contain the [GoogleNews Word2Vec model](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing), which is needed to load the default word vectors. In addition, the [StudyStack Flashcards](https://drive.google.com/file/d/0B0fFJSGDUPcgUFJpTVl3QXhnNTQ/view?usp=sharing).
 
