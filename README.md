@@ -159,17 +159,9 @@ Data is not included in this project. However, most of the data is available on 
        |       +---- models
 
 
-The bAbI dataset is available from [this URL]. Download it and expand the tarball under the babi\_data directory.
+The dataset is available from (here)[https://www.kaggle.com/allenai/ai2-science-questions].
 
-My code uses the **original dataset** provided along with the competition, which is no longer available (and cannot be distributed). However, AllenAI provides an [alternative dataset](http://allenai.org/data.html) which can be used instead. These files need to be copied into the comp\_data subdirectory. Note that the format of the new data is slightly different, but fortunately well documented, so you will have to adapt the parsing logic in kaggle.py. Look for the following verbiage to find the correct dataset to download.
-
->    AI2 8th Grade Science Questions (No Diagrams)
->
->    641 questions February 2016 These question sets are derived from a variety of regional and state science exams.
->
->    These science exam questions guide our research into multiple choice question answering at the elementary science level. This download contains 8th grade-level multiple choice questions that do not incorporate diagrams.
-
-The comp\_data directory should also contain the [GoogleNews Word2Vec model](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing), which is needed to load the default word vectors. In addition, the [StudyStack Flashcards](https://drive.google.com/file/d/0B0fFJSGDUPcgUFJpTVl3QXhnNTQ/view?usp=sharing) should also be downloaded and exploded in the same directory.
+The data directory should also contain the [GoogleNews Word2Vec model](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing), which is needed to load the default word vectors. In addition, the [StudyStack Flashcards](https://drive.google.com/file/d/0B0fFJSGDUPcgUFJpTVl3QXhnNTQ/view?usp=sharing).
 
 The models directory is used to hold the models that are written out by the different models when they run. The deploy code uses these models to make predictions. Models are not checked into github because of space considerations.
 

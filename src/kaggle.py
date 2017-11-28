@@ -1,12 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import division, print_function
+
+import collections
+import csv
+import os
+import re
+
+import nltk
+import numpy as np
 from gensim.models import Word2Vec
 from keras.models import model_from_json
 from keras.preprocessing.sequence import pad_sequences
-import nltk
-import numpy as np
-import collections
-import os
+
+
+# https://raw.githubusercontent.com/sujitpal/dl-models-for-qa/master/src/kaggle.py
 
 def get_stories(story_file, debug=False):
     stories = []
@@ -22,20 +29,22 @@ def get_stories(story_file, debug=False):
         lno += 1
     fin.close()
     return stories
-    
+
+
 def get_question_answer_pairs(question_file, is_test=False):
     qapairs = []
-    fqa = open(question_file, "rb")
-    for line in fqa:
-        if line.startswith("#"):
-            continue
-        line = line.strip().decode("utf8").encode("ascii", "ignore")
-        cols = line.split("\t")
-        question = cols[1]
-        qwords = nltk.word_tokenize(question)
+    fqa = open(question_file, 'r')
+    reader = csv.reader(fqa, delimiter=',', quotechar='"')
+    next(fqa, None)
+    for cols in reader:
+        question = cols[-3]
+        qwords = nltk.word_tokenize(question.split('(A)')[0].strip())
         if not is_test:
-            correct_ans = cols[2]
-            answers = cols[3:]
+            correct_ans = cols[3]
+            answers = re.split(r'[()]', question)
+            answers = [x.strip() for i, x in enumerate(answers) if i in {2, 4, 6, 8}]
+            if '{' in answers[0]:
+                continue
             # training file parsing
             correct_ans_idx = ord(correct_ans) - ord('A')
             for idx, answer in enumerate(answers):
@@ -49,6 +58,7 @@ def get_question_answer_pairs(question_file, is_test=False):
                 qapairs.append((qwords, awords, None))
     fqa.close()
     return qapairs
+
 
 def get_story_question_answer_triples(sqa_file):
     sqatriples = []
@@ -69,6 +79,7 @@ def get_story_question_answer_triples(sqa_file):
     fsqa.close()
     return sqatriples
 
+
 def build_vocab(stories, qapairs, testqs):
     wordcounts = collections.Counter()
     for story in stories:
@@ -85,8 +96,9 @@ def build_vocab(stories, qapairs, testqs):
         for aword in testq[1]:
             wordcounts[aword] += 1
     words = [wordcount[0] for wordcount in wordcounts.most_common()]
-    word2idx = {w: i+1 for i, w in enumerate(words)}  # 0 = mask
+    word2idx = {w: i + 1 for i, w in enumerate(words)}  # 0 = mask
     return word2idx
+
 
 def build_vocab_from_sqa_triples(sqatriples):
     wordcounts = collections.Counter()
@@ -98,8 +110,9 @@ def build_vocab_from_sqa_triples(sqatriples):
         for aword in sqatriple[2]:
             wordcounts[aword] += 1
     words = [wordcount[0] for wordcount in wordcounts.most_common()]
-    word2idx = {w: i+1 for i, w in enumerate(words)}  # 0 = mask
+    word2idx = {w: i + 1 for i, w in enumerate(words)}  # 0 = mask
     return word2idx
+
 
 def vectorize_stories(stories, word2idx, story_maxlen):
     Xs = []
@@ -107,17 +120,19 @@ def vectorize_stories(stories, word2idx, story_maxlen):
         Xs.append([word2idx[word] for word in story])
     return pad_sequences(Xs, maxlen=story_maxlen)
 
+
 def vectorize_qapairs(qapairs, word2idx, seq_maxlen):
     Xq, Xa, Y = [], [], []
     for qapair in qapairs:
         Xq.append([word2idx[qword] for qword in qapair[0]])
         Xa.append([word2idx[aword] for aword in qapair[1]])
         Y.append(np.array([1, 0]) if qapair[2] else np.array([0, 1]))
-    return (pad_sequences(Xq, maxlen=seq_maxlen), 
+    return (pad_sequences(Xq, maxlen=seq_maxlen),
             pad_sequences(Xa, maxlen=seq_maxlen),
             np.array(Y))
 
-def vectorize_sqatriples(sqatriples, word2idx, story_maxlen, 
+
+def vectorize_sqatriples(sqatriples, word2idx, story_maxlen,
                          question_maxlen, answer_maxlen):
     Xs, Xq, Xa, Y = [], [], [], []
     for sqatriple in sqatriples:
@@ -130,9 +145,9 @@ def vectorize_sqatriples(sqatriples, word2idx, story_maxlen,
             pad_sequences(Xa, maxlen=answer_maxlen),
             np.array(Y))
 
-def get_weights_word2vec(word2idx, w2vfile, w2v_embed_size=300, 
+
+def get_weights_word2vec(word2idx, w2vfile, w2v_embed_size=300,
                          is_custom=False):
-    word2vec = None
     if is_custom:
         word2vec = Word2Vec.load(w2vfile)
     else:
@@ -146,6 +161,7 @@ def get_weights_word2vec(word2idx, w2vfile, w2v_embed_size=300,
             pass  # keep as zero (not ideal, but what else can we do?)
     return embedding_weights
 
+
 def get_model_filename(caller, model_type):
     caller = os.path.basename(caller)
     caller = caller[0:caller.rindex(".")]
@@ -154,10 +170,12 @@ def get_model_filename(caller, model_type):
     else:
         return "%s-%s.h5" % (caller, model_type)
 
+
 def save_model(model, json_filename, weights_filename):
     model.save_weights(weights_filename)
     with open(json_filename, "wb") as fjson:
         fjson.write(model.to_json())
+
 
 def load_model(json_filename, weights_filename):
     with open(json_filename, "rb") as fjson:
@@ -165,29 +183,29 @@ def load_model(json_filename, weights_filename):
     model.load_weights(filepath=weights_filename)
     return model
 
-    
-##### main ####
-#
-#import os
-#
-#DATA_DIR = "../data/comp_data"
-#QA_TRAIN_FILE = "8thGr-NDMC-Train.csv"
-#STORY_FILE = "studystack_qa_cleaner_no_qm.txt"
-#
-#stories = get_stories(os.path.join(DATA_DIR, STORY_FILE))
-#story_maxlen = max([len(words) for words in stories])
-#print("story maxlen=", story_maxlen)
-#
-#qapairs = get_question_answer_pairs(os.path.join(DATA_DIR, QA_TRAIN_FILE))
-#question_maxlen = max([len(qapair[0]) for qapair in qapairs])
-#answer_maxlen = max([len(qapair[1]) for qapair in qapairs])
-#print("q=", question_maxlen, "a=", answer_maxlen)
-#
-#word2idx = build_vocab(stories, qapairs)
-#w2v = get_weights_word2vec(word2idx, 
-#                           os.path.join(DATA_DIR, "studystack.bin"),
-#                           is_custom=True)
-#print(w2v.shape)                           
-#
-#Xs = vectorize_stories(stories, word2idx, story_maxlen)
-#Xq, Xa = vectorize_qapairs(qapairs, word2idx, question_maxlen, answer_maxlen)
+
+    ##### main ####
+    #
+    # import os
+    #
+    # DATA_DIR = "../data/comp_data"
+    # QA_TRAIN_FILE = "8thGr-NDMC-Train.csv"
+    # STORY_FILE = "studystack_qa_cleaner_no_qm.txt"
+    #
+    # stories = get_stories(os.path.join(DATA_DIR, STORY_FILE))
+    # story_maxlen = max([len(words) for words in stories])
+    # print("story maxlen=", story_maxlen)
+    #
+    # qapairs = get_question_answer_pairs(os.path.join(DATA_DIR, QA_TRAIN_FILE))
+    # question_maxlen = max([len(qapair[0]) for qapair in qapairs])
+    # answer_maxlen = max([len(qapair[1]) for qapair in qapairs])
+    # print("q=", question_maxlen, "a=", answer_maxlen)
+    #
+    # word2idx = build_vocab(stories, qapairs)
+    # w2v = get_weights_word2vec(word2idx,
+    #                           os.path.join(DATA_DIR, "studystack.bin"),
+    #                           is_custom=True)
+    # print(w2v.shape)
+    #
+    # Xs = vectorize_stories(stories, word2idx, story_maxlen)
+    # Xq, Xa = vectorize_qapairs(qapairs, word2idx, question_maxlen, answer_maxlen)
